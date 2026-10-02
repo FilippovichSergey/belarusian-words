@@ -57,6 +57,18 @@ npm run generate-images -- 5
 
 Стыль малюнкаў задаецца зменнай `IMAGE_STYLE` у `.env.local`, мадэль — `GEMINI_IMAGE_MODEL` (напрыклад `gemini-2.5-flash-image` ці `gemini-3-pro-image`).
 
+## 5. Імпарт з Telegram
+
+Скрыпт чытае HTML-экспарт канала, дзе кожнае паведамленне пачынаецца радком «Кірыліца / Lacinka / English / Русский». Тлумачэнне і цытата трапляюць у камент, дата паведамлення становіцца датай дадання, кожнае слова атрымлівае тэг `verbarium`. Паведамленні без такога радка прапускаюцца, а словы, якія ўжо ёсць у базе, не дублююцца.
+
+```bash
+npm run import-telegram -- words/messages2.html --dry-run
+```
+
+Калі ў `.env.local` ёсць `SUPABASE_SERVICE_ROLE_KEY`, скрыпт без `--dry-run` запісвае словы наўпрост у базу. Без ключа ён стварае побач SQL-файл, які трэба выканаць у Supabase SQL Editor.
+
+Папка `words/` і файл `Словы.txt` не трапляюць у git.
+
 ## Структура
 
 ```
@@ -73,4 +85,5 @@ src/app/words/actions.ts       Server Actions: стварэнне, абнаўл�
 src/app/login/                 уваход і выхад
 src/components/WordForm.tsx    форма з загрузкай малюнка наўпрост у Storage
 scripts/generate-images.ts     пакетная генерацыя малюнкаў праз Gemini
+scripts/import-telegram.ts     імпарт слоў з экспарту Telegram
 ```

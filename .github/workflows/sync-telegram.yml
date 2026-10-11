@@ -1,0 +1,45 @@
+name: Сінхранізацыя Telegram
+
+on:
+  schedule:
+    # Штодня а 05:23 UTC. Час можна змяніць: хвіліна, гадзіна (UTC).
+    - cron: "23 5 * * *"
+  workflow_dispatch:
+    inputs:
+      pages:
+        description: "Глыбіня першага запуску канала, старонак па 20 пастоў"
+        default: "1"
+      dry_run:
+        description: "Пробны запуск без запісу ў базу"
+        type: boolean
+        default: false
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sync-telegram
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      - name: Сінхранізацыя
+        env:
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
+          GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
+          PAGES: ${{ inputs.pages || '1' }}
+          DRY_RUN: ${{ inputs.dry_run && '--dry-run' || '' }}
+        run: npx tsx scripts/sync-telegram.ts --pages "$PAGES" $DRY_RUN

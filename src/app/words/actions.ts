@@ -126,3 +126,49 @@ export async function deleteWord(id: string): Promise<void> {
   revalidatePath("/");
   redirect("/");
 }
+
+/** Публікуе адзін чарнавік. */
+export async function publishWord(id: string): Promise<void> {
+  const { supabase, user } = await requireUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("words")
+    .update({ status: "published" })
+    .eq("id", id);
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/");
+  revalidatePath("/drafts");
+  revalidatePath(`/words/${id}`);
+}
+
+/** Публікуе ўсе чарнавікі адразу. */
+export async function publishAllDrafts(): Promise<void> {
+  const { supabase, user } = await requireUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("words")
+    .update({ status: "published" })
+    .eq("status", "draft");
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/");
+  revalidatePath("/drafts");
+}
+
+/** Выдаляе чарнавік і застаецца на старонцы чаргі. */
+export async function discardDraft(id: string): Promise<void> {
+  const { supabase, user } = await requireUser();
+  if (!user) redirect("/login");
+
+  const { error } = await supabase
+    .from("words")
+    .delete()
+    .eq("id", id)
+    .eq("status", "draft");
+  if (error) throw new Error(error.message);
+
+  revalidatePath("/drafts");
+}

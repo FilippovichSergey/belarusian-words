@@ -17,11 +17,21 @@ create table if not exists public.words (
   updated_at  timestamptz not null default now()
 );
 
--- Для існуючых установак: дадаць калонку, калі яе яшчэ няма
+-- Для існуючых установак: дадаць калонкі, калі іх яшчэ няма
 alter table public.words add column if not exists be_lat text;
+-- status: "published" бачаць усе, "draft" толькі аўтарызаваны карыстальнік
+alter table public.words add column if not exists status text not null default 'published';
+-- source: адкуль слова (напрыклад назва Telegram-канала), source_url: спасылка на пост
+alter table public.words add column if not exists source text;
+alter table public.words add column if not exists source_url text;
+
+alter table public.words drop constraint if exists words_status_check;
+alter table public.words add constraint words_status_check
+  check (status in ('draft', 'published'));
 
 create index if not exists words_created_at_idx on public.words (created_at desc);
 create index if not exists words_be_idx on public.words (lower(be));
+create index if not exists words_status_idx on public.words (status, created_at desc);
 
 -- Аўтаматычнае абнаўленне updated_at
 create or replace function public.set_updated_at()
@@ -37,13 +47,19 @@ create trigger words_set_updated_at
   before update on public.words
   for each row execute function public.set_updated_at();
 
--- Row Level Security: чытаць могуць усе, пісаць толькі аўтарызаваныя карыстальнікі
+-- Row Level Security: апублікаваныя словы чытаюць усе, чарнавікі і запіс
+-- даступныя толькі аўтарызаваным карыстальнікам
 alter table public.words enable row level security;
 
 drop policy if exists "words: public read" on public.words;
 create policy "words: public read"
   on public.words for select
-  using (true);
+  using (status = 'published');
+
+drop policy if exists "words: auth read" on public.words;
+create policy "words: auth read"
+  on public.words for select
+  to authenticated using (true);
 
 drop policy if exists "words: auth insert" on public.words;
 create policy "words: auth insert"
@@ -59,6 +75,15 @@ drop policy if exists "words: auth delete" on public.words;
 create policy "words: auth delete"
   on public.words for delete
   to authenticated using (true);
+
+-- Стан сінхранізацыі з Telegram: нумар апошняга апрацаванага паста ў канале.
+-- Палітык няма, таму табліца даступная толькі скрыпту з ключом service_role.
+create table if not exists public.telegram_sync (
+  channel       text primary key,
+  last_post_id  integer not null,
+  updated_at    timestamptz not null default now()
+);
+alter table public.telegram_sync enable row level security;
 
 -- Сховішча малюнкаў: публічны bucket "images"
 insert into storage.buckets (id, name, public, file_size_limit, allowed_mime_types)

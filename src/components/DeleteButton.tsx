@@ -3,15 +3,17 @@
 export function DeleteButton({
   action,
   label = "Выдаліць",
+  confirmText = "Выдаліць гэтае слова разам з малюнкам?",
 }: {
   action: () => Promise<void>;
   label?: string;
+  confirmText?: string;
 }) {
   return (
     <form
       action={action}
       onSubmit={(e) => {
-        if (!confirm("Выдаліць гэтае слова разам з малюнкам?")) {
+        if (!confirm(confirmText)) {
           e.preventDefault();
         }
       }}

@@ -1,9 +1,11 @@
 import Link from "next/link";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { signOut } from "@/app/login/actions";
+import { countDrafts } from "@/lib/words";
 
 export async function Header() {
   const user = await getCurrentUser();
+  const drafts = user ? await countDrafts() : 0;
 
   return (
     <header className="border-b border-stone-200 bg-white dark:border-stone-800 dark:bg-stone-900">
@@ -14,6 +16,14 @@ export async function Header() {
         <nav className="flex items-center gap-3 text-sm">
           {user ? (
             <>
+              {drafts > 0 && (
+                <Link
+                  href="/drafts"
+                  className="rounded-md border border-amber-300 bg-amber-50 px-3 py-1.5 font-medium text-amber-900 hover:bg-amber-100 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200 dark:hover:bg-amber-900"
+                >
+                  Чарнавікі: {drafts}
+                </Link>
+              )}
               <Link
                 href="/words/new"
                 className="rounded-md bg-emerald-600 px-3 py-1.5 font-medium text-white hover:bg-emerald-700"

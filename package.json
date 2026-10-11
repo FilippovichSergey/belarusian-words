@@ -8,7 +8,8 @@
     "start": "next start",
     "lint": "eslint",
     "generate-images": "tsx scripts/generate-images.ts",
-    "import-telegram": "tsx scripts/import-telegram.ts"
+    "import-telegram": "tsx scripts/import-telegram.ts",
+    "sync-telegram": "tsx scripts/sync-telegram.ts"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",

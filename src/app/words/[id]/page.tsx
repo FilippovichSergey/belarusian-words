@@ -3,8 +3,8 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { DeleteButton } from "@/components/DeleteButton";
 import { getCurrentUser } from "@/lib/supabase/server";
-import { getWord, imageUrl } from "@/lib/words";
-import { deleteWord } from "@/app/words/actions";
+import { getWord, imageUrl, safeSourceUrl } from "@/lib/words";
+import { deleteWord, publishWord } from "@/app/words/actions";
 
 export default async function WordPage({ params }: PageProps<"/words/[id]">) {
   const { id } = await params;
@@ -12,6 +12,8 @@ export default async function WordPage({ params }: PageProps<"/words/[id]">) {
   if (!word) notFound();
 
   const src = imageUrl(word.image_path);
+  const source = safeSourceUrl(word.source_url);
+  const isDraft = word.status === "draft";
   const created = new Date(word.created_at).toLocaleDateString("be-BY", {
     year: "numeric",
     month: "long",
@@ -43,6 +45,11 @@ export default async function WordPage({ params }: PageProps<"/words/[id]">) {
         </div>
 
         <div className="flex flex-col gap-4">
+          {isDraft && (
+            <p className="self-start rounded-md border border-amber-300 bg-amber-50 px-3 py-1 text-sm text-amber-900 dark:border-amber-700 dark:bg-amber-950 dark:text-amber-200">
+              Чарнавік: гэтае слова бачыце толькі вы
+            </p>
+          )}
           <h1 className="text-3xl font-bold tracking-tight">{word.be}</h1>
           {word.be_lat && (
             <p className="-mt-2 text-lg italic text-stone-500 dark:text-stone-400">
@@ -78,10 +85,35 @@ export default async function WordPage({ params }: PageProps<"/words/[id]">) {
             </ul>
           )}
 
-          <p className="text-xs text-stone-500">Дададзена: {created}</p>
+          <p className="text-xs text-stone-500">
+            Дададзена: {created}
+            {source && (
+              <>
+                {" · "}
+                <a
+                  href={source}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="underline hover:text-stone-700 dark:hover:text-stone-300"
+                >
+                  крыніца: {word.source}
+                </a>
+              </>
+            )}
+          </p>
 
           {user && (
-            <div className="mt-2 flex items-center gap-3">
+            <div className="mt-2 flex flex-wrap items-center gap-3">
+              {isDraft && (
+                <form action={publishWord.bind(null, word.id)}>
+                  <button
+                    type="submit"
+                    className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-700"
+                  >
+                    Апублікаваць
+                  </button>
+                </form>
+              )}
               <Link
                 href={`/words/${word.id}/edit`}
                 className="rounded-md border border-stone-300 px-3 py-1.5 text-sm hover:bg-stone-100 dark:border-stone-700 dark:hover:bg-stone-800"

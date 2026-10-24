@@ -46,3 +46,6 @@ next-env.d.ts
 # local source data (not published)
 /words/
 /Словы.txt
+
+# Gemini image batches (local only)
+/images-batch/

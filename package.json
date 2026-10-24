@@ -9,7 +9,9 @@
     "lint": "eslint",
     "generate-images": "tsx scripts/generate-images.ts",
     "import-telegram": "tsx scripts/import-telegram.ts",
-    "sync-telegram": "tsx scripts/sync-telegram.ts"
+    "sync-telegram": "tsx scripts/sync-telegram.ts",
+    "images:batch": "tsx scripts/images-manual.ts batch",
+    "images:upload": "tsx scripts/images-manual.ts upload"
   },
   "dependencies": {
     "@supabase/ssr": "^0.12.6",

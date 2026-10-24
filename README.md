@@ -39,9 +39,9 @@ npm run dev
 
 **Уручную.** Згенеруйце малюнак у дадатку Gemini (Nano Banana) ці ў Whisk, спампуйце і загрузіце праз форму слова.
 
-**Аўтаматычна праз Gemini API.** Скрыпт бярэ словы без малюнка, генеруе ілюстрацыю ў адзіным стылі і захоўвае яе ў Supabase Storage.
+**Аўтаматычна праз Gemini API.** Скрыпт бярэ апублікаваныя словы без малюнка, генеруе ілюстрацыю ў адзіным стылі, сціскае яе ў WebP 768×768 і захоўвае ў Supabase Storage. Чарнавікі прапускаюцца.
 
-1. Атрымайце ключ на https://aistudio.google.com/apikey. Увага: падпіска Gemini Pro не ўключае API, гэта асобны білінг з бясплатным лімітам.
+1. Атрымайце ключ на https://aistudio.google.com/apikey. Увага: падпіска Gemini Pro не ўключае API. Генерацыя малюнкаў у API на бясплатным тарыфе недаступная, таму ў AI Studio трэба ўключыць аплату (Set up billing).
 2. У `.env.local` дадайце `GEMINI_API_KEY` і `SUPABASE_SERVICE_ROLE_KEY` (Project Settings → API → service_role). Гэты ключ дае поўны доступ да базы, не публікуйце яго.
 3. Паглядзець промпты без генерацыі:
 
@@ -55,7 +55,7 @@ npm run generate-images -- 5 --dry-run
 npm run generate-images -- 5
 ```
 
-Стыль малюнкаў задаецца зменнай `IMAGE_STYLE` у `.env.local`, мадэль — `GEMINI_IMAGE_MODEL` (напрыклад `gemini-2.5-flash-image` ці `gemini-3-pro-image`).
+Стыль малюнкаў задаецца зменнай `IMAGE_STYLE` у `.env.local`. Мадэлі задаюцца праз `GEMINI_IMAGE_MODELS` спісам праз коску, па змаўчанні `gemini-3.1-flash-image,gemini-2.5-flash-image`. Калі мадэль недаступная, скрыпт бярэ наступную.
 
 ## 5. Імпарт з Telegram
 

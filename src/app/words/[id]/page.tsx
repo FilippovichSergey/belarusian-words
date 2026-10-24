@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { DeleteButton } from "@/components/DeleteButton";
 import { getCurrentUser } from "@/lib/supabase/server";
 import { getWord, imageUrl, safeSourceUrl } from "@/lib/words";
+import { channelTitle } from "@/lib/telegram-channels";
 import { deleteWord, publishWord } from "@/app/words/actions";
 
 export default async function WordPage({ params }: PageProps<"/words/[id]">) {
@@ -96,7 +97,7 @@ export default async function WordPage({ params }: PageProps<"/words/[id]">) {
                   rel="noopener noreferrer"
                   className="underline hover:text-stone-700 dark:hover:text-stone-300"
                 >
-                  крыніца: {word.source}
+                  крыніца: {channelTitle(word.source)}
                 </a>
               </>
             )}

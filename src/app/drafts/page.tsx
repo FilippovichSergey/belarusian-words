@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { DeleteButton } from "@/components/DeleteButton";
 import { listWords, safeSourceUrl } from "@/lib/words";
+import { channelTitle } from "@/lib/telegram-channels";
 import { discardDraft, publishAllDrafts, publishWord } from "@/app/words/actions";
 
 export const metadata = { title: "Чарнавікі" };
@@ -70,7 +71,7 @@ export default async function DraftsPage() {
                       rel="noopener noreferrer"
                       className="text-xs text-emerald-700 underline dark:text-emerald-400"
                     >
-                      Пост у канале {word.source}
+                      Пост у канале «{channelTitle(word.source)}»
                     </a>
                   )}
                 </div>

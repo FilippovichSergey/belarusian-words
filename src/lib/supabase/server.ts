@@ -28,6 +28,10 @@ export async function createClient() {
 }
 
 export async function getCurrentUser() {
+  // Без налад Supabase карыстальнік лічыцца госцем, а пра памылку скажа старонка.
+  if (!process.env.NEXT_PUBLIC_SUPABASE_URL || !process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY) {
+    return null;
+  }
   const supabase = await createClient();
   const {
     data: { user },

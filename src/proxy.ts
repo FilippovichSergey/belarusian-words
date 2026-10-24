@@ -6,9 +6,18 @@ const PROTECTED = [/^\/words\/new$/, /^\/words\/[^/]+\/edit$/, /^\/drafts$/];
 export async function proxy(request: NextRequest) {
   let response = NextResponse.next({ request });
 
+  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  const key = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+  if (!url || !key) {
+    // Без адраса і ключа Supabase сесію праверыць нельга. Прапускаем запыт далей,
+    // каб старонка памылкі растлумачыла, што трэба задаць зменныя асяроддзя.
+    // Запіс усё роўна немагчымы: яго правяраюць Server Actions і правілы базы.
+    return response;
+  }
+
   const supabase = createServerClient(
-    process.env.NEXT_PUBLIC_SUPABASE_URL!,
-    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+    url,
+    key,
     {
       cookies: {
         getAll() {

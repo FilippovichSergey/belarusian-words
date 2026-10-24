@@ -35,7 +35,21 @@ const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABA
   .trim()
   .replace(/\/+$/, "")
   .replace(/\/rest\/v1$/, "");
-const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+
+/** Роля ключа Supabase: service_role, anon, publishable ці unknown. Значэнне ключа не друкуецца. */
+function keyRole(key: string): string {
+  if (key.startsWith("sb_secret_")) return "service_role";
+  if (key.startsWith("sb_publishable_")) return "publishable";
+  const payload = key.split(".")[1];
+  if (!payload) return "unknown";
+  try {
+    const role = JSON.parse(Buffer.from(payload, "base64url").toString("utf8")).role;
+    return typeof role === "string" ? role : "unknown";
+  } catch {
+    return "unknown";
+  }
+}
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 // Бясплатны тарыф дае каля 20 запытаў на дзень на мадэль, таму ёсць запасныя.
 const TEXT_MODELS = (
@@ -243,6 +257,14 @@ async function main() {
   let db: SupabaseClient | null = null;
   let keys = new Set<string>();
   if (SUPABASE_URL && SERVICE_KEY) {
+    const role = keyRole(SERVICE_KEY);
+    if (role !== "service_role" && role !== "unknown") {
+      throw new Error(
+        `SUPABASE_SERVICE_ROLE_KEY утрымлівае ключ з роллю «${role}», а не service_role, ` +
+          "таму запіс у базу забаронены правіламі доступу. У Supabase адкрыйце Project Settings → API Keys " +
+          "і скапіруйце ключ service_role (ці secret, sb_secret_...), а не anon/publishable.",
+      );
+    }
     db = createClient(SUPABASE_URL, SERVICE_KEY, { auth: { persistSession: false } });
     try {
       keys = await loadExistingKeys(db);

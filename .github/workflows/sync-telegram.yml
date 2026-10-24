@@ -26,6 +26,36 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
+      # Паказвае, якія сакрэты бачныя гэтаму запуску. Значэнні не друкуюцца.
+      - name: Праверка сакрэтаў
+        env:
+          S_URL: ${{ secrets.SUPABASE_URL != '' }}
+          S_URL_ALT: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL != '' }}
+          V_URL: ${{ vars.SUPABASE_URL != '' || vars.NEXT_PUBLIC_SUPABASE_URL != '' }}
+          S_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY != '' }}
+          V_KEY: ${{ vars.SUPABASE_SERVICE_ROLE_KEY != '' }}
+          S_GEMINI: ${{ secrets.GEMINI_API_KEY != '' }}
+          V_GEMINI: ${{ vars.GEMINI_API_KEY != '' }}
+        run: |
+          echo "Repository secret SUPABASE_URL: $S_URL"
+          echo "Repository secret NEXT_PUBLIC_SUPABASE_URL: $S_URL_ALT"
+          echo "Variable SUPABASE_URL: $V_URL"
+          echo "Repository secret SUPABASE_SERVICE_ROLE_KEY: $S_KEY"
+          echo "Repository secret GEMINI_API_KEY: $S_GEMINI"
+          where="Settings → Secrets and variables → Actions → укладка Secrets → Repository secrets → New repository secret"
+          if [ "$V_KEY" = "true" ] || [ "$V_GEMINI" = "true" ]; then
+            echo "::error title=Ключ захаваны як Variable::Ключы SUPABASE_SERVICE_ROLE_KEY і GEMINI_API_KEY павінны быць сакрэтамі, а не Variables: значэнні Variables бачныя ўсім. Выдаліце іх з Variables і дадайце тут: $where"
+          fi
+          if [ "$S_URL" != "true" ] && [ "$S_URL_ALT" != "true" ] && [ "$V_URL" != "true" ]; then
+            echo "::error title=Няма SUPABASE_URL::Запуск не бачыць сакрэт SUPABASE_URL. Сакрэты асяроддзя (напрыклад Production ад Vercel) гэтаму workflow недаступныя. Дадайце тут: $where"
+          fi
+          if [ "$S_KEY" != "true" ]; then
+            echo "::error title=Няма SUPABASE_SERVICE_ROLE_KEY::Запуск не бачыць сакрэт SUPABASE_SERVICE_ROLE_KEY. Дадайце тут: $where"
+          fi
+          if [ "$S_GEMINI" != "true" ]; then
+            echo "::warning title=Няма GEMINI_API_KEY::Без GEMINI_API_KEY разбіраюцца толькі пасты Verbarium. Дадайце тут: $where"
+          fi
+
       - uses: actions/checkout@v5
 
       - uses: actions/setup-node@v5
@@ -37,7 +67,8 @@ jobs:
 
       - name: Сінхранізацыя
         env:
-          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          # Адрас праекта не сакрэтны, таму падыходзіць і Variable.
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.SUPABASE_URL || secrets.NEXT_PUBLIC_SUPABASE_URL || vars.SUPABASE_URL || vars.NEXT_PUBLIC_SUPABASE_URL }}
           SUPABASE_SERVICE_ROLE_KEY: ${{ secrets.SUPABASE_SERVICE_ROLE_KEY }}
           GEMINI_API_KEY: ${{ secrets.GEMINI_API_KEY }}
           PAGES: ${{ inputs.pages || '1' }}

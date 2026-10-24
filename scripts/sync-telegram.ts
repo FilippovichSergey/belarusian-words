@@ -233,8 +233,25 @@ async function main() {
       console.warn(`База недаступная (${(err as Error).message}). Dry-run без праверкі дублікатаў.`);
       db = null;
     }
+    if (db && !dryRun) {
+      // Табліца стану з'яўляецца пасля міграцыі. Без яе спыняемся з зразумелым тлумачэннем.
+      const { error } = await db.from("telegram_sync").select("channel").limit(1);
+      if (error) {
+        throw new Error(
+          `Табліца telegram_sync недаступная (${error.message}). ` +
+            "Выканайце supabase/migrations/2026-10-11_telegram_sync.sql у Supabase SQL Editor.",
+        );
+      }
+    }
   } else if (!dryRun) {
-    throw new Error("Не зададзены NEXT_PUBLIC_SUPABASE_URL ці SUPABASE_SERVICE_ROLE_KEY.");
+    const missing = [
+      !SUPABASE_URL && "NEXT_PUBLIC_SUPABASE_URL (у GitHub: сакрэт SUPABASE_URL)",
+      !SERVICE_KEY && "SUPABASE_SERVICE_ROLE_KEY",
+    ].filter(Boolean);
+    throw new Error(
+      `Не зададзена: ${missing.join(", ")}. Лакальна дадайце ў .env.local, ` +
+        "у GitHub: Settings → Secrets and variables → Actions.",
+    );
   }
 
   const ai = GEMINI_KEY ? createAiExtractor(GEMINI_KEY, TEXT_MODELS) : null;

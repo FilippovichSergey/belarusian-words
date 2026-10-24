@@ -38,8 +38,11 @@ const SIZE = 768;
 // Адзіны стыль для ўсёй калекцыі. Змяняйце пад свой густ.
 const STYLE =
   process.env.IMAGE_STYLE ??
-  "Flat vector illustration, soft pastel colors, clean white background, " +
-    "simple friendly shapes, centered composition, suitable as a flashcard picture.";
+  "Traditional Japanese ukiyo-e woodblock print style: bold clean outlines, flat areas of color, " +
+    "muted indigo, vermilion and ochre palette, subtle washi paper texture, a single clear subject, " +
+    "centered composition on a plain light background, suitable as a flashcard picture. " +
+    "No Japanese characters, seals or signatures. Only the style is Japanese: " +
+    "people, objects and places follow the meaning of the word.";
 
 type WordRow = {
   id: string;

@@ -23,10 +23,11 @@
 - Калі ўсе пункты не змяшчаюцца ў адзін адказ, спыніся пасля апошняга гатовага і напішы, з якога нумара працягнуць. Працягвай, калі я напішу «далей».
 
 Стыль, аднолькавы для ўсіх малюнкаў:
-Flat vector illustration, soft pastel colors, clean white background, simple friendly shapes, centered composition, suitable as a flashcard picture.
+Traditional Japanese ukiyo-e woodblock print style: bold clean outlines, flat areas of color, muted indigo, vermilion and ochre palette, subtle washi paper texture, a single clear subject, centered composition on a plain light background, suitable as a flashcard picture.
 
 Змест:
-- На малюнку не павінна быць ніякага тэксту: ні літар, ні лічбаў, ні подпісаў, ні вадзяных знакаў.
+- На малюнку не павінна быць ніякага тэксту: ні літар, ні лічбаў, ні японскіх іерогліфаў, ні пячатак, ні подпісаў мастака, ні вадзяных знакаў.
+- Японскі толькі стыль. Людзі, рэчы і мясціны паказваюць сэнс слова і не мусяць быць японскімі, калі сэнс гэтага не патрабуе.
 - Малюнак мусіць паказваць значэнне слова так, каб па ім можна было здагадацца пра слова. Арыентуйся на пераклад і сэнс, а не на гучанне беларускага слова.
 - Назоўнік: сам прадмет ці з'ява. Дзеяслоў: чалавек ці жывёла, якія робяць гэта дзеянне. Прыметнік: прадмет з гэтай якасцю. Абстрактнае слова ці выраз: простая зразумелая сцэна.
 - Цытата ці прыказка: адна сімвалічная сцэна пра яе сэнс.
@@ -34,6 +35,14 @@ Flat vector illustration, soft pastel colors, clean white background, simple fri
 ```
 
 Калі Gem не малюе малюнкі, устаўце гэты ж тэкст у пачатак звычайнага чата з Gemini, а пасля яго спіс слоў.
+
+### Іншы японскі стыль
+
+Каб змяніць стыль, замяніце ў інструкцыях Gem радок пасля «Стыль, аднолькавы для ўсіх малюнкаў» адным з гэтых. Мяняйце стыль паміж пачкамі, а не ў сярэдзіне, каб калекцыя выглядала цэласна.
+
+- **Анімэ:** `Japanese anime illustration style: clean line art, soft cel shading, gentle pastel colors, expressive but simple characters, plain light background, centered composition, suitable as a flashcard picture.`
+- **Тушшу, сумі-э:** `Japanese sumi-e ink wash painting style: expressive black ink brushstrokes, soft gray washes with one accent color, lots of empty space, rice paper texture, single clear subject, suitable as a flashcard picture.`
+- **Манга, чорна-белы:** `Japanese manga style: crisp black and white line art with screentone shading, clear single subject, plain background, suitable as a flashcard picture.`
 
 ## 2. Падрыхтуйце пачак слоў
 

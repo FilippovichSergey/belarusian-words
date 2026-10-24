@@ -75,12 +75,37 @@ export function parseChannelPage(html: string, username: string): Post[] {
   return posts.sort((a, b) => a.id - b.id);
 }
 
+/** Тэкст сеткавай памылкі з прычынай: «fetch failed» сам па сабе нічога не кажа. */
+export function describeError(err: unknown): string {
+  if (!(err instanceof Error)) return String(err);
+  const cause = (err as Error & { cause?: { code?: string; message?: string } }).cause;
+  const detail = cause?.code ?? cause?.message;
+  return detail && !err.message.includes(detail) ? `${err.message} (${detail})` : err.message;
+}
+
+async function fetchWithRetry(url: string, tries = 4): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 1; attempt <= tries; attempt++) {
+    try {
+      const res = await fetch(url, {
+        headers: { "User-Agent": USER_AGENT, "Accept-Language": "be,en;q=0.8" },
+        redirect: "follow",
+        signal: AbortSignal.timeout(30_000),
+      });
+      // 429 і 5xx часовыя: паўтараем. Астатнія коды вяртаем як ёсць.
+      if (res.status !== 429 && res.status < 500) return res;
+      lastError = new Error(`HTTP ${res.status}`);
+    } catch (err) {
+      lastError = err;
+    }
+    if (attempt < tries) await new Promise((r) => setTimeout(r, 3000 * attempt));
+  }
+  throw new Error(`${url}: ${describeError(lastError)}`);
+}
+
 async function fetchPage(username: string, before?: number): Promise<Post[]> {
   const url = `https://t.me/s/${username}${before ? `?before=${before}` : ""}`;
-  const res = await fetch(url, {
-    headers: { "User-Agent": USER_AGENT, "Accept-Language": "be,en;q=0.8" },
-    redirect: "follow",
-  });
+  const res = await fetchWithRetry(url);
   if (!res.ok) throw new Error(`${url}: HTTP ${res.status}`);
   const html = await res.text();
   if (!html.includes("tgme_widget_message")) {

@@ -25,12 +25,16 @@ import {
   type AiExtractor,
   type Entry,
 } from "./telegram/extract";
-import { fetchNewPosts } from "./telegram/fetch";
+import { describeError, fetchNewPosts } from "./telegram/fetch";
 import { wordKey } from "./telegram/lacinka";
 
 loadEnv({ path: ".env.local", quiet: true });
 
-const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL ?? process.env.SUPABASE_URL;
+// Адрас праекта без «/rest/v1» і канцавых «/»: так часта капіруюць з панэлі Supabase.
+const SUPABASE_URL = (process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || "")
+  .trim()
+  .replace(/\/+$/, "")
+  .replace(/\/rest\/v1$/, "");
 const SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const GEMINI_KEY = process.env.GEMINI_API_KEY;
 // Бясплатны тарыф дае каля 20 запытаў на дзень на мадэль, таму ёсць запасныя.
@@ -57,11 +61,26 @@ type Stats = {
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+/** У GitHub Actions памылка трапляе ў Annotations і ў ліст пра збой. */
+function annotate(level: "error" | "warning", message: string) {
+  if (!process.env.GITHUB_ACTIONS) return;
+  const escaped = message.replace(/%/g, "%25").replace(/\r/g, "%0D").replace(/\n/g, "%0A");
+  console.log(`::${level} title=Сінхранізацыя Telegram::${escaped}`);
+}
+
 async function loadExistingKeys(db: SupabaseClient): Promise<Set<string>> {
   const keys = new Set<string>();
   for (let from = 0; ; from += 1000) {
     const { data, error } = await db.from("words").select("be").range(from, from + 999);
-    if (error) throw new Error(`чытанне слоў: ${error.message}`);
+    if (error) {
+      const host = SUPABASE_URL.replace(/^https?:\/\//, "");
+      const hint = /fetch failed|ENOTFOUND|ECONNREFUSED/i.test(error.message)
+        ? ` Няма злучэння з ${host}. Праверце сакрэт SUPABASE_URL (толькі адрас праекта, напрыклад https://xxxx.supabase.co) і ці не прыпынены праект у панэлі Supabase.`
+        : /Invalid API key|JWT|apikey/i.test(error.message)
+          ? " Праверце сакрэт SUPABASE_SERVICE_ROLE_KEY: патрэбны ключ service_role ці secret, а не publishable."
+          : "";
+      throw new Error(`чытанне слоў: ${error.message}.${hint}`);
+    }
     for (const row of data ?? []) keys.add(wordKey(row.be as string));
     if (!data || data.length < 1000) break;
   }
@@ -268,7 +287,7 @@ async function main() {
         published: 0,
         drafts: 0,
         duplicates: 0,
-        error: (err as Error).message,
+        error: describeError(err),
         note: null,
       });
     }
@@ -287,10 +306,16 @@ async function main() {
     appendFileSync(process.env.GITHUB_STEP_SUMMARY, `## Сінхранізацыя Telegram\n\n${lines.join("\n")}\n`);
   }
 
+  for (const s of all) {
+    if (s.error) annotate("error", `${s.channel}: ${s.error}`);
+    else if (s.note) annotate("warning", `${s.channel}: ${s.note}`);
+  }
   if (all.some((s) => s.error)) process.exitCode = 1;
 }
 
 main().catch((err) => {
-  console.error(err instanceof Error ? err.message : err);
-  process.exit(1);
+  const message = describeError(err);
+  console.error(message);
+  annotate("error", message);
+  process.exitCode = 1;
 });

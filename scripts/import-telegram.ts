@@ -13,15 +13,23 @@
  *
  * Запіс у базу патрабуе SUPABASE_SERVICE_ROLE_KEY у .env.local.
  * Без яго скрыпт стварае SQL-файл, які трэба выканаць у Supabase SQL Editor.
- * Словы, якія ўжо ёсць у базе (па полі be), прапускаюцца.
+ * Словы, якія ўжо ёсць у базе (па полі be), не дублююцца. Калі ў іх яшчэ няма
+ * крыніцы, скрыпт прапісвае канал і спасылку на пост.
+ *
+ * Канал па змаўчанні verbarium_by, іншы задаецца праз --channel <username>.
+ * Нумары паведамленняў у экспарце супадаюць з нумарамі пастоў на t.me.
  */
 import { readFileSync, writeFileSync } from "node:fs";
 import { config as loadEnv } from "dotenv";
 import { createClient } from "@supabase/supabase-js";
+import { CHANNELS } from "../src/lib/telegram-channels";
+import { wordKey } from "./telegram/lacinka";
 
 loadEnv({ path: ".env.local", quiet: true });
 
-const SOURCE_TAG = "verbarium";
+const channelArg = process.argv.indexOf("--channel");
+const CHANNEL = channelArg >= 0 ? process.argv[channelArg + 1] : "verbarium_by";
+const SOURCE_TAG = CHANNELS.find((c) => c.username === CHANNEL)?.tag ?? CHANNEL.toLowerCase();
 
 type Row = {
   be: string;
@@ -31,6 +39,8 @@ type Row = {
   comment: string | null;
   tags: string[];
   created_at: string | null;
+  source: string;
+  source_url: string | null;
 };
 
 function decode(s: string): string {
@@ -98,9 +108,11 @@ export function parseExport(html: string): { rows: Row[]; skipped: number } {
     const created_at = parseDate(
       msg.match(/class="pull_right date details" title="([^"]+)"/)?.[1],
     );
+    const messageId = msg.match(/id="message(\d+)"/)?.[1];
+    const source_url = messageId ? `https://t.me/${CHANNEL}/${messageId}` : null;
 
     for (const w of found) {
-      rows.push({ ...w, comment, tags: [SOURCE_TAG], created_at });
+      rows.push({ ...w, comment, tags: [SOURCE_TAG], created_at, source: CHANNEL, source_url });
     }
   }
 
@@ -110,7 +122,7 @@ export function parseExport(html: string): { rows: Row[]; skipped: number } {
 function dedupe(rows: Row[]): Row[] {
   const seen = new Set<string>();
   return rows.filter((r) => {
-    const key = r.be.toLowerCase();
+    const key = wordKey(r.be);
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
@@ -127,18 +139,28 @@ function toSql(rows: Row[]): string {
       (r) =>
         `  (${sqlString(r.be)}, ${sqlString(r.be_lat)}, ${sqlString(r.en)}, ${sqlString(r.ru)}, ` +
         `${sqlString(r.comment)}, array[${r.tags.map(sqlString).join(", ")}]::text[], ` +
-        `${r.created_at ? `${sqlString(r.created_at)}::timestamptz` : "now()"})`,
+        `${r.created_at ? `${sqlString(r.created_at)}::timestamptz` : "now()"}, ` +
+        `${sqlString(r.source)}, ${sqlString(r.source_url)})`,
     )
     .join(",\n");
 
   return `-- Імпарт ${rows.length} слоў. Выканайце ў Supabase SQL Editor.
--- Паўторны запуск бяспечны: існуючыя словы (па полі be) прапускаюцца.
+-- Паўторны запуск бяспечны: існуючыя словы (па полі be) не дублююцца,
+-- а тым, у каго няма крыніцы, прапісваюцца канал і спасылка на пост.
 
-insert into public.words (be, be_lat, en, ru, comment, tags, created_at)
-select v.be, v.be_lat, v.en, v.ru, v.comment, v.tags, v.created_at
-from (values
+with v(be, be_lat, en, ru, comment, tags, created_at, source, source_url) as (values
 ${values}
-) as v(be, be_lat, en, ru, comment, tags, created_at)
+),
+updated as (
+  update public.words w
+  set source = v.source, source_url = v.source_url
+  from v
+  where lower(w.be) = lower(v.be) and w.source is null
+  returning w.id
+)
+insert into public.words (be, be_lat, en, ru, comment, tags, created_at, source, source_url)
+select v.be, v.be_lat, v.en, v.ru, v.comment, v.tags, v.created_at, v.source, v.source_url
+from v
 where not exists (
   select 1 from public.words w where lower(w.be) = lower(v.be)
 );
@@ -147,7 +169,9 @@ where not exists (
 
 async function main() {
   const args = process.argv.slice(2);
-  const file = args.find((a) => !a.startsWith("--") && !a.endsWith(".sql"));
+  const file = args.find(
+    (a, i) => !a.startsWith("--") && !a.endsWith(".sql") && args[i - 1] !== "--channel",
+  );
   const dryRun = args.includes("--dry-run");
   const sqlIdx = args.indexOf("--sql");
   let sqlOut = sqlIdx >= 0 ? args[sqlIdx + 1] : undefined;
@@ -181,10 +205,32 @@ async function main() {
   }
 
   const supabase = createClient(url!, serviceKey!, { auth: { persistSession: false } });
-  const { data: existing, error: readErr } = await supabase.from("words").select("be");
-  if (readErr) throw new Error(readErr.message);
-  const have = new Set((existing ?? []).map((w) => (w.be as string).toLowerCase()));
-  const fresh = rows.filter((r) => !have.has(r.be.toLowerCase()));
+  const existing: { id: string; be: string; source: string | null }[] = [];
+  for (let from = 0; ; from += 1000) {
+    const { data, error } = await supabase
+      .from("words")
+      .select("id, be, source")
+      .range(from, from + 999);
+    if (error) throw new Error(error.message);
+    existing.push(...(data ?? []));
+    if (!data || data.length < 1000) break;
+  }
+  const byKey = new Map(existing.map((w) => [wordKey(w.be), w]));
+  const fresh = rows.filter((r) => !byKey.has(wordKey(r.be)));
+
+  // Словы, імпартаваныя раней без крыніцы: прапісваем канал і спасылку на пост.
+  let sourced = 0;
+  for (const r of rows) {
+    const match = byKey.get(wordKey(r.be));
+    if (!match || match.source) continue;
+    const { error } = await supabase
+      .from("words")
+      .update({ source: r.source, source_url: r.source_url })
+      .eq("id", match.id)
+      .is("source", null);
+    if (error) throw new Error(`крыніца для «${r.be}»: ${error.message}`);
+    sourced++;
+  }
 
   for (let i = 0; i < fresh.length; i += 100) {
     const batch = fresh.slice(i, i + 100).map((r) => ({
@@ -194,7 +240,10 @@ async function main() {
     const { error } = await supabase.from("words").insert(batch);
     if (error) throw new Error(error.message);
   }
-  console.log(`Дададзена: ${fresh.length}. Ужо было ў базе: ${rows.length - fresh.length}.`);
+  console.log(
+    `Дададзена: ${fresh.length}. Ужо было ў базе: ${rows.length - fresh.length}. ` +
+      `Прапісана крыніца: ${sourced}.`,
+  );
 }
 
 main().catch((err) => {
